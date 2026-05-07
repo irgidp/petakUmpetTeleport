@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-# petakUmpetTeleport
-Plugin Minecraft 1.21.11 for Youtube Content
-=======
 # 🎮 **Petak Umpet Teleport - Minecraft Plugin**
 
 **Version**: 1.0-release  
