@@ -19,61 +19,126 @@ public class TeleportManager {
         this.plugin = plugin;
     }
 
-    public void executeTeleport(int type, List<Player> allPlayers, Player hunter) {
+    public void executeTeleport(int type, List<Player> allPlayers, Player hunter, Set<UUID> ghostPlayers) {
         switch (type) {
-            case 0 -> swapAllPlayers(allPlayers);
-            case 1 -> swapHidersRandom(allPlayers, hunter);
-            case 2 -> swapMix(allPlayers);
+            case 0 -> swapAllPlayers(allPlayers, ghostPlayers);
+            case 1 -> swapHidersRandom(allPlayers, hunter, ghostPlayers);
+            case 2 -> swapMix(allPlayers, ghostPlayers);
             case 3 -> fakeSwap(allPlayers);
-            case 4 -> fixedSwapHiders(allPlayers, hunter);
+            case 4 -> fixedSwapHiders(allPlayers, hunter, ghostPlayers);
         }
     }
 
-    // TYPE 1: Swap Semua Player
-    private void swapAllPlayers(List<Player> players) {
-        List<Location> spawns = getRandomLocations(players.size());
+    // TYPE 1: Swap SEMUA Player ke Posisi Masing2 (Hunter + Ghost + Hider ALL)
+    private void swapAllPlayers(List<Player> players, Set<UUID> ghostPlayers) {
+        // SEMUA player bisa included (Hunter, Ghost, Hider alive)
+        List<Player> allCanTeleport = new ArrayList<>(players);
 
-        for (int i = 0; i < players.size(); i++) {
-            players.get(i).teleport(spawns.get(i));
-            players.get(i).playSound(players.get(i).getLocation(),
+        if (allCanTeleport.size() < 2) {
+            Bukkit.broadcastMessage("§9[TELEPORT] §cTidak cukup player! Teleport dibatalkan.");
+            return;
+        }
+
+        // Simpan posisi original setiap player
+        Map<Player, Location> originalLocations = new HashMap<>();
+        for (Player p : allCanTeleport) {
+            originalLocations.put(p, p.getLocation().clone());
+        }
+
+        // Shuffle list player untuk swap posisi
+        List<Player> shuffledPlayers = new ArrayList<>(allCanTeleport);
+        Collections.shuffle(shuffledPlayers);
+
+        // Teleport SEMUA player ke posisi player lain (rotasi)
+        for (int i = 0; i < allCanTeleport.size(); i++) {
+            Player currentPlayer = allCanTeleport.get(i);
+            Location targetLocation = originalLocations.get(shuffledPlayers.get(i));
+
+            currentPlayer.teleport(targetLocation);
+            currentPlayer.playSound(currentPlayer.getLocation(),
                     Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1f);
         }
 
-        Bukkit.broadcastMessage("§9[TELEPORT] §fSemua player di-swap ke lokasi random!");
+        Bukkit.broadcastMessage("§9[TELEPORT] §f🌪️ SEMUA PEMAIN BERTUKAR POSISI!");
     }
 
-    // TYPE 2: Swap Hiders Random Only
-    private void swapHidersRandom(List<Player> allPlayers, Player hunter) {
-        List<Player> hiders = allPlayers.stream()
+    // TYPE 2: Swap Hiders Alive Only (Each Other - Ghost & Hunter TIDAK ikut)
+    private void swapHidersRandom(List<Player> allPlayers, Player hunter, Set<UUID> ghostPlayers) {
+        List<Player> liveHiders = allPlayers.stream()
                 .filter(p -> !p.equals(hunter))
+                .filter(p -> !ghostPlayers.contains(p.getUniqueId()))  // EXCLUDE GHOST
                 .toList();
 
-        List<Location> spawns = getRandomLocations(hiders.size());
+        if (liveHiders.size() < 2) {
+            Bukkit.broadcastMessage("§b[TELEPORT] §cTidak cukup hider alive! Teleport dibatalkan.");
+            return;
+        }
 
-        for (int i = 0; i < hiders.size(); i++) {
-            hiders.get(i).teleport(spawns.get(i));
-            hiders.get(i).playSound(hiders.get(i).getLocation(),
+        // Simpan posisi original setiap live hider
+        Map<Player, Location> originalLocations = new HashMap<>();
+        for (Player p : liveHiders) {
+            originalLocations.put(p, p.getLocation().clone());
+        }
+
+        // Shuffle hiders untuk menentukan target teleport
+        List<Player> shuffledHiders = new ArrayList<>(liveHiders);
+        Collections.shuffle(shuffledHiders);
+
+        // Teleport setiap live hider ke posisi live hider lain (rotasi)
+        for (int i = 0; i < liveHiders.size(); i++) {
+            Player currentHider = liveHiders.get(i);
+            Location targetLocation = originalLocations.get(shuffledHiders.get(i));
+
+            currentHider.teleport(targetLocation);
+            currentHider.playSound(currentHider.getLocation(),
                     Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1f);
         }
 
-        Bukkit.broadcastMessage("§b[TELEPORT] §fHiders di-teleport ke lokasi random!");
+        Bukkit.broadcastMessage("§b[TELEPORT] §fHiders bertukar posisi satu sama lain! Ghost & Hunter tetap ditempat.");
     }
 
-    // TYPE 3: Swap Mix (4 random, 2 stay)
-    private void swapMix(List<Player> allPlayers) {
-        List<Player> shuffled = new ArrayList<>(allPlayers);
+    // TYPE 2: Swap Mix - SEMUA (Dynamic - 2/3 swap, 1/3 stay)
+    private void swapMix(List<Player> allPlayers, Set<UUID> ghostPlayers) {
+        // SEMUA player bisa included (Hunter + Ghost + Hider)
+        List<Player> allCanTeleport = new ArrayList<>(allPlayers);
+
+        if (allCanTeleport.size() < 2) {
+            Bukkit.broadcastMessage("§c[TELEPORT] §cTidak cukup player! Teleport dibatalkan.");
+            return;
+        }
+
+        // Calculate jumlah player yang akan di-swap (2/3 dari SEMUA player)
+        int swapCount = Math.max(2, (allCanTeleport.size() * 2 / 3));
+        swapCount = Math.min(swapCount, allCanTeleport.size() - 1);
+
+        List<Player> shuffled = new ArrayList<>(allCanTeleport);
         Collections.shuffle(shuffled);
 
-        List<Player> toSwap = shuffled.stream().limit(4).toList();
-        List<Location> spawns = getRandomLocations(4);
+        // Ambil player yang akan di-swap (bisa Hunter, Ghost, atau Hider)
+        List<Player> toSwap = shuffled.stream().limit(swapCount).toList();
 
+        // Simpan posisi original dari player yang akan di-swap
+        Map<Player, Location> originalLocations = new HashMap<>();
+        for (Player p : toSwap) {
+            originalLocations.put(p, p.getLocation().clone());
+        }
+
+        // Shuffle posisi untuk randomisasi target teleport
+        List<Player> shuffledSwapPlayers = new ArrayList<>(toSwap);
+        Collections.shuffle(shuffledSwapPlayers);
+
+        // Teleport ke satu sama lain (rotasi)
         for (int i = 0; i < toSwap.size(); i++) {
-            toSwap.get(i).teleport(spawns.get(i));
-            toSwap.get(i).playSound(toSwap.get(i).getLocation(),
+            Player currentPlayer = toSwap.get(i);
+            Location targetLocation = originalLocations.get(shuffledSwapPlayers.get(i));
+
+            currentPlayer.teleport(targetLocation);
+            currentPlayer.playSound(currentPlayer.getLocation(),
                     Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1f);
         }
 
-        StringBuilder sb = new StringBuilder("§c[TELEPORT] §fSwap 4 player: ");
+        int stayCount = allCanTeleport.size() - swapCount;
+        StringBuilder sb = new StringBuilder("§c[TELEPORT] §f⚡ Swap " + swapCount + " player, " + stayCount + " stay: ");
         toSwap.forEach(p -> sb.append(p.getName()).append(", "));
         Bukkit.broadcastMessage(sb.toString());
     }
@@ -92,49 +157,36 @@ public class TeleportManager {
         new org.bukkit.scheduler.BukkitRunnable() {
             @Override
             public void run() {
-                Bukkit.broadcastMessage("§9[TELEPORT] §c❌ FALSE ALARM!");
+                Bukkit.broadcastMessage("§9[TELEPORT] §c❌ PRENK");
                 Bukkit.broadcastMessage("§9[TELEPORT] §fTidak ada teleport kali ini!");
             }
         }.runTaskLater(plugin, 40L);
     }
 
-    // TYPE 5: Fixed Swap Hiders Pattern
-    private void fixedSwapHiders(List<Player> allPlayers, Player hunter) {
-        List<Player> hiders = allPlayers.stream()
+    // TYPE 5: Fixed Swap HIDERS ALIVE Pattern (Ghost TIDAK ikut)
+    private void fixedSwapHiders(List<Player> allPlayers, Player hunter, Set<UUID> ghostPlayers) {
+        List<Player> liveHiders = allPlayers.stream()
                 .filter(p -> !p.equals(hunter))
+                .filter(p -> !ghostPlayers.contains(p.getUniqueId()))  // EXCLUDE GHOST
                 .toList();
 
-        if (hiders.size() < 2) return;
+        if (liveHiders.size() < 2) {
+            Bukkit.broadcastMessage("§2[TELEPORT] §cTidak cukup hider alive! Teleport dibatalkan.");
+            return;
+        }
 
         Map<Player, Location> locs = new HashMap<>();
-        hiders.forEach(p -> locs.put(p, p.getLocation().clone()));
+        liveHiders.forEach(p -> locs.put(p, p.getLocation().clone()));
 
-        // Rotate: player 0 → location player 1, player 1 → location player 2, etc.
-        for (int i = 0; i < hiders.size(); i++) {
-            int next = (i + 1) % hiders.size();
-            hiders.get(i).teleport(locs.get(hiders.get(next)));
-            hiders.get(i).playSound(hiders.get(i).getLocation(),
+        // Rotate: hider 0 → location hider 1, hider 1 → location hider 2, etc.
+        for (int i = 0; i < liveHiders.size(); i++) {
+            int next = (i + 1) % liveHiders.size();
+            liveHiders.get(i).teleport(locs.get(liveHiders.get(next)));
+            liveHiders.get(i).playSound(liveHiders.get(i).getLocation(),
                     Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1f);
         }
 
-        Bukkit.broadcastMessage("§2[TELEPORT] §fHiders bertukar posisi (cycle)!");
-    }
-
-    // Helper: Generate random spawn locations
-    public List<Location> getRandomLocations(int count) {
-        List<Location> locations = new ArrayList<>();
-        World world = Bukkit.getWorlds().get(0);
-
-        for (int i = 0; i < count; i++) {
-            // Random within -500 to 500 X and Z, Y = highest block
-            int x = random.nextInt(1000) - 500;
-            int z = random.nextInt(1000) - 500;
-            int y = world.getHighestBlockYAt(x, z);
-
-            locations.add(new Location(world, x + 0.5, y + 1, z + 0.5));
-        }
-
-        return locations;
+        Bukkit.broadcastMessage("§2[TELEPORT] §fHiders bertukar posisi (cycle)! Ghost & Hunter tetap ditempat.");
     }
 }
 

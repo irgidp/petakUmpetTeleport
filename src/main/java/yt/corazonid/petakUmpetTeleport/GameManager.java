@@ -56,6 +56,11 @@ public class GameManager {
     public int getNextDeathPenalty() {
         deadCount++;
         int hiderCount = participants.size() - 1; // Total hiders (excluding hunter)
+        // BUGFIX #2: Pastikan scoring terurut sesuai jumlah hider
+        // Dengan 6 player (1 hunter, 5 hider):
+        // Kematian ke-1: -(5-0) = -5
+        // Kematian ke-2: -(5-1) = -4
+        // dst...
         int penalty = -(hiderCount - (deadCount - 1));
         return Math.max(penalty, -1); // Minimum penalty adalah -1
     }
@@ -81,6 +86,13 @@ public class GameManager {
         currentHunter = null;
         deadCount = 0;
         gameRunning = false;
+    }
+
+    /**
+     * BUGFIX #2: Public method untuk reset deadCount
+     */
+    public void resetDeadCount() {
+        this.deadCount = 0;
     }
 }
 

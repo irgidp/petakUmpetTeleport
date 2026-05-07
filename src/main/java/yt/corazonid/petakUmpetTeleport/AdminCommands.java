@@ -26,7 +26,7 @@ public class AdminCommands implements CommandExecutor {
 
         if (label.equalsIgnoreCase("regis")) {
             if (gm.isGameRunning()) {
-                sender.sendMessage("§cTidak bisa regis saat game berlangsung!");
+                sender.sendMessage("§cTidak bisa melakukan registrasi saat game berlangsung!");
                 return true;
             }
             if (args.length < 1) {

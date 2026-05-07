@@ -68,7 +68,7 @@ public class GameLoopTask extends BukkitRunnable {
                         case 4 -> "Fixed Swap Hiders Pattern";
                         default -> "Unknown";
                     };
-                    tm.executeTeleport(randomType, gm.getParticipants(), gm.getHunter());
+                    tm.executeTeleport(randomType, gm.getParticipants(), gm.getHunter(), plugin.getGameListener().getGhostPlayers());
                     plugin.getLogger().info("Teleport Type #" + randomType + ": " + typeInfo);
                 }
             }

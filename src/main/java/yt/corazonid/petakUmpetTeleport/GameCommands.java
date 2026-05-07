@@ -95,6 +95,13 @@ public class GameCommands implements CommandExecutor {
     private void startHidePhase() {
         GameManager gm = plugin.getGameManager();
         gm.setGameRunning(true);
+
+        // BUGFIX #2: Pastikan deadCount direset untuk scoring yang benar
+        gm.resetDeadCount();
+
+        // BUGFIX #3: Reset eliminatedPlayers dan ghostPlayers untuk ronde baru
+        plugin.getGameListener().resetForNewRound();
+
         Player hunter = gm.getHunter();
 
         new BukkitRunnable() {
@@ -128,6 +135,7 @@ public class GameCommands implements CommandExecutor {
                     this.cancel();
                     if (hunter != null) {
                         hunter.removePotionEffect(org.bukkit.potion.PotionEffectType.BLINDNESS);
+                        hunter.removePotionEffect(org.bukkit.potion.PotionEffectType.SLOWNESS);
                         plugin.getGameListener().giveHunterGear(hunter);
                     }
                     Bukkit.broadcastMessage("§c§lHUNTER DILEPASKAN!");
