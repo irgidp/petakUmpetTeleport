@@ -127,18 +127,25 @@ public class GameListener implements Listener {
             Bukkit.getLogger().warning("Cannot give hunter gear: Player " + (p != null ? p.getName() : "null") + " is not online!");
             return;
         }
-
         p.getInventory().clear();
         p.getInventory().addItem(new ItemStack(Material.NETHERITE_SWORD));
-        p.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, 99999, 1), true); // STRENGTH II
+        p.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, 99999, 255), true); // STRENGTH II
         p.sendMessage("§e⚔ Kamu diberikan Netherite Sword & Kekuatan Maksimal!");
         Bukkit.broadcastMessage("§c§l" + p.getName() + " §csiap berburu!");
     }
 
     public void giveGhostGear(Player p) {
+        if (p == null || !p.isOnline()) {
+            Bukkit.getLogger().warning("Cannot give ghost gear: Player " + (p != null ? p.getName() : "null") + " is not online!");
+            return;
+        }
+        if (p.isDead()) {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> giveGhostGear(p), 5L);
+            return;
+        }
         p.getInventory().clear();
         p.getInventory().addItem(new ItemStack(Material.NETHERITE_SWORD));
-        p.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, 99999, 1), true); // Level 1 = STRENGTH II
+        p.addPotionEffect(new PotionEffect(PotionEffectType.STRENGTH, 99999, 255), true); // Level 1 = STRENGTH II
         p.sendMessage("§7[GHOST] §f⚔ Kamu menjadi ghost! Dapatkan §c+1 Poin §funtuk setiap kill!");
     }
 

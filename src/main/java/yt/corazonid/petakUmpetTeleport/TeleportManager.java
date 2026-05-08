@@ -39,20 +39,23 @@ public class TeleportManager {
             return;
         }
 
-        // Simpan posisi original setiap player
-        Map<Player, Location> originalLocations = new HashMap<>();
+        // Shuffle urutan player secara acak
+        Collections.shuffle(allCanTeleport);
+
+        // Ambil lokasi sesuai dengan urutan player yang sudah diacak
+        List<Location> locations = new ArrayList<>();
         for (Player p : allCanTeleport) {
-            originalLocations.put(p, p.getLocation().clone());
+            locations.add(p.getLocation().clone());
         }
 
-        // Shuffle list player untuk swap posisi
-        List<Player> shuffledPlayers = new ArrayList<>(allCanTeleport);
-        Collections.shuffle(shuffledPlayers);
+        // Geser index lokasi sebanyak 1 langkah.
+        // Ini memastikan Player di index 0 akan mendapat lokasi Player index 1, dst.
+        Collections.rotate(locations, 1);
 
-        // Teleport SEMUA player ke posisi player lain (rotasi)
+        // Eksekusi teleport
         for (int i = 0; i < allCanTeleport.size(); i++) {
             Player currentPlayer = allCanTeleport.get(i);
-            Location targetLocation = originalLocations.get(shuffledPlayers.get(i));
+            Location targetLocation = locations.get(i);
 
             currentPlayer.teleport(targetLocation);
             currentPlayer.playSound(currentPlayer.getLocation(),
@@ -64,30 +67,33 @@ public class TeleportManager {
 
     // TYPE 2: Swap Hiders Alive Only (Each Other - Ghost & Hunter TIDAK ikut)
     private void swapHidersRandom(List<Player> allPlayers, Player hunter, Set<UUID> ghostPlayers) {
-        List<Player> liveHiders = allPlayers.stream()
+        // Bungkus dengan ArrayList agar list bisa di-shuffle (karena .toList() bersifat immutable)
+        List<Player> liveHiders = new ArrayList<>(allPlayers.stream()
                 .filter(p -> !p.equals(hunter))
                 .filter(p -> !ghostPlayers.contains(p.getUniqueId()))  // EXCLUDE GHOST
-                .toList();
+                .toList());
 
         if (liveHiders.size() < 2) {
             Bukkit.broadcastMessage("§b[TELEPORT] §cTidak cukup hider alive! Teleport dibatalkan.");
             return;
         }
 
-        // Simpan posisi original setiap live hider
-        Map<Player, Location> originalLocations = new HashMap<>();
+        // Shuffle urutan hider secara acak
+        Collections.shuffle(liveHiders);
+
+        // Ambil lokasi sesuai dengan urutan hider yang sudah diacak
+        List<Location> locations = new ArrayList<>();
         for (Player p : liveHiders) {
-            originalLocations.put(p, p.getLocation().clone());
+            locations.add(p.getLocation().clone());
         }
 
-        // Shuffle hiders untuk menentukan target teleport
-        List<Player> shuffledHiders = new ArrayList<>(liveHiders);
-        Collections.shuffle(shuffledHiders);
+        // Geser index lokasi sebanyak 1 langkah.
+        Collections.rotate(locations, 1);
 
-        // Teleport setiap live hider ke posisi live hider lain (rotasi)
+        // Eksekusi teleport
         for (int i = 0; i < liveHiders.size(); i++) {
             Player currentHider = liveHiders.get(i);
-            Location targetLocation = originalLocations.get(shuffledHiders.get(i));
+            Location targetLocation = locations.get(i);
 
             currentHider.teleport(targetLocation);
             currentHider.playSound(currentHider.getLocation(),
@@ -111,30 +117,35 @@ public class TeleportManager {
         int swapCount = Math.max(2, (allCanTeleport.size() * 2 / 3));
         swapCount = Math.min(swapCount, allCanTeleport.size() - 1);
 
-        List<Player> shuffled = new ArrayList<>(allCanTeleport);
-        Collections.shuffle(shuffled);
-
-        // Ambil player yang akan di-swap (bisa Hunter, Ghost, atau Hider)
-        List<Player> toSwap = shuffled.stream().limit(swapCount).toList();
+        Collections.shuffle(allCanTeleport);
+        List<Player> toSwap = new ArrayList<>(allCanTeleport.subList(0, swapCount));
 
         // Simpan posisi original dari player yang akan di-swap
         Map<Player, Location> originalLocations = new HashMap<>();
+
         for (Player p : toSwap) {
             originalLocations.put(p, p.getLocation().clone());
         }
 
-        // Shuffle posisi untuk randomisasi target teleport
-        List<Player> shuffledSwapPlayers = new ArrayList<>(toSwap);
-        Collections.shuffle(shuffledSwapPlayers);
+        Collections.shuffle(toSwap);
 
-        // Teleport ke satu sama lain (rotasi)
+        List<Location> locations = new ArrayList<>();
+
+        for (Player p : toSwap) {
+            locations.add(originalLocations.get(p));
+        }
+
+        Collections.rotate(locations, 1);
+
         for (int i = 0; i < toSwap.size(); i++) {
-            Player currentPlayer = toSwap.get(i);
-            Location targetLocation = originalLocations.get(shuffledSwapPlayers.get(i));
+            Player player = toSwap.get(i);
 
-            currentPlayer.teleport(targetLocation);
-            currentPlayer.playSound(currentPlayer.getLocation(),
-                    Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1f);
+            player.teleport(locations.get(i));
+
+            player.playSound(player.getLocation(),
+                    Sound.ENTITY_ENDERMAN_TELEPORT,
+                    1f,
+                    1f);
         }
 
         int stayCount = allCanTeleport.size() - swapCount;

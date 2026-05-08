@@ -6,7 +6,7 @@
 
     <groupId>yt.corazonid</groupId>
     <artifactId>petakUmpetTeleport</artifactId>
-    <version>1.0-release</version>
+    <version>1.5-release</version>
     <packaging>jar</packaging>
 
     <name>petakUmpetTeleport</name>
